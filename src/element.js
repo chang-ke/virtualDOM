@@ -1,4 +1,5 @@
 import { isString } from '../utils/index.js';
+
 class Element {
   constructor({ type, props, children }) {
     this.type = type;
@@ -9,11 +10,12 @@ class Element {
       this.key = props.key;
     }
   }
+  
   static render(root, virtualDOM) {
     if (!root instanceof HTMLElement) {
       throw new TypeError(`${root} must be a HTMLElement`);
     }
-    let el;
+    let el = null;
     if (Array.isArray(virtualDOM)) {
       virtualDOM.forEach(dom => {
         if (isString(dom)) {
@@ -35,12 +37,15 @@ class Element {
     }
     return el;
   }
+
   create() {
     return this._createElement(this.type, this.props, this.children, this.key);
   }
+
   clone() {
     return this.create();
   }
+  
   _createElement(type, props, children, key) {
     let el = document.createElement(type);
     for (const key in props) {

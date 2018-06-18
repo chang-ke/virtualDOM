@@ -24,7 +24,7 @@ export function isAlpha(c) {
 }
 
 export function isSpace(c) {
-  return /\s/gim.test(c);
+  return /\s/gm.test(c);
 }
 
 export function isString(s) {

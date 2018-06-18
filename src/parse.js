@@ -1,7 +1,10 @@
 import { Stack, isAlpha, isSpace, deepClone } from '../utils/index.js';
 
-function Tiger() {
-  const unCloseTag = ['img', 'input', 'br', 'link', 'meta'];
+const selfCloseTag = `meta,base,br,hr,img,input,col,frame,link,
+area,param,object,embed,keygen,source,command,track,wbr`
+  .replace(/\s/gm, '')
+  .split(',');
+function Lexical() {
   const stack = new Stack();
   let html = '';
   let index = 0;
@@ -25,7 +28,7 @@ function Tiger() {
             virtualDOMTree.push(dom);
             virtualDOM = Object.assign({}, dom);
             if (text) {
-              unCloseTag.includes(type) ? virtualDOMTree.push(text) : dom.children.push(text);
+              selfCloseTag.includes(type) ? virtualDOMTree.push(text) : dom.children.push(text);
             }
           } else {
             let newVirtualDOM = virtualDOM;
@@ -34,7 +37,7 @@ function Tiger() {
             }
             // s指向要push的对象
             newVirtualDOM.children.push(dom);
-            if (!unCloseTag.includes(type)) {
+            if (!selfCloseTag.includes(type)) {
               let children = newVirtualDOM.children[newVirtualDOM.children.length - 1].children;
               if (text) children.push(text);
             } else {
@@ -44,7 +47,7 @@ function Tiger() {
             virtualDOM = deepClone(virtualDOM);
           }
           //自闭合标签不加入栈
-          if (!unCloseTag.includes(type)) {
+          if (!selfCloseTag.includes(type)) {
             stack.push(type);
           }
         } else {
@@ -74,6 +77,7 @@ function Tiger() {
     }
     return virtualDOMTree;
   }
+
   function getStartTag() {
     let type = '';
     while (html[index] !== '>' && !isSpace(html[index])) {
@@ -86,6 +90,7 @@ function Tiger() {
     }
     return type.trim();
   }
+
   function getProps(type) {
     let props = {},
       name = '',
@@ -126,6 +131,7 @@ function Tiger() {
     }
     return props;
   }
+
   function getEndTag() {
     let type = '';
     while (html[index] !== '>') {
@@ -135,7 +141,7 @@ function Tiger() {
       index += 1;
     }
     // console.log(stack.last, type);
-    if (unCloseTag.includes(stack.last)) {
+    if (selfCloseTag.includes(stack.last)) {
       return stack.pop();
     }
     // 遇到自闭合标签直接跳过
@@ -143,6 +149,7 @@ function Tiger() {
       throwError('Syntax', index);
     }
   }
+
   function getText() {
     let text = '';
     while (html[index + 1] !== '<') {
@@ -174,4 +181,4 @@ function Tiger() {
   return { parse };
 }
 
-export default Tiger;
+export default Lexical;
