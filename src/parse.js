@@ -1,184 +1,73 @@
-import { Stack, isAlpha, isSpace, deepClone } from '../utils/index.js';
+import tokenizer from './tokenizer';
+import {Stack, deepClone} from '../utils/index';
 
-const selfCloseTag = `meta,base,br,hr,img,input,col,frame,link,
-area,param,object,embed,keygen,source,command,track,wbr`
-  .replace(/\s/gm, '')
-  .split(',');
-function Lexical() {
-  const stack = new Stack();
-  let html = '';
-  let index = 0;
-  let virtualDOM = {};
-  let virtualDOMTree = [];
+let startTagReg = /[0-9a-z]+\s?/;
+let propsReg = /([0-9a-zA-Z]|-)+\s*=\s*(("(.|\s)*?")|('(.|\s)*?'))/g;
+let endTagReg = /[0-9a-zA-Z]+/;
+let stack = new Stack();
+let selfCloseTag = [
+  ...'meta,base,br,hr,img,input,col,frame,link,command'.split(','),
+  ...'area,param,object,embed,keygen,source,track,wbr'.split(','),
+];
 
-  function parse(_html) {
-    //去掉注释
-    html = _html.replace(/<!--(.|\s)*?-->/gm, '');
-    let startText = html.match(/(.|\s)*?</)[0].slice(0, -1);
-    if (startText.replace(/\s/gm, '')) virtualDOMTree.push(startText);
-
-    for (; index < html.length; ++index) {
-      if (html[index] === '<' && (index += 1)) {
-        if (isAlpha(html[index])) {
-          let type = getStartTag(),
-            props = getProps(type),
-            text = getText();
-          let dom = { type, props, children: [] };
-          if (stack.len === 0) {
-            virtualDOMTree.push(dom);
-            virtualDOM = Object.assign({}, dom);
-            if (text) {
-              selfCloseTag.includes(type) ? virtualDOMTree.push(text) : dom.children.push(text);
-            }
-          } else {
-            let newVirtualDOM = virtualDOM;
-            for (let index = 1; index < stack.len; ++index) {
-              newVirtualDOM = newVirtualDOM.children[newVirtualDOM.children.length - 1];
-            }
-            // s指向要push的对象
-            newVirtualDOM.children.push(dom);
-            if (!selfCloseTag.includes(type)) {
-              let children = newVirtualDOM.children[newVirtualDOM.children.length - 1].children;
-              if (text) children.push(text);
-            } else {
-              if (text) newVirtualDOM.children.push(text);
-            }
-            // 获取修改对象的引用，vdom
-            virtualDOM = deepClone(virtualDOM);
-          }
-          //自闭合标签不加入栈
-          if (!selfCloseTag.includes(type)) {
-            stack.push(type);
-          }
-        } else {
-          getEndTag();
-          let text = html.substr(index).match(/>(.|\s)*?</m);
-          let newVirtualDOM = virtualDOM;
-          for (let index = 1; index < stack.len; ++index) {
-            newVirtualDOM = newVirtualDOM.children[newVirtualDOM.children.length - 1];
-          }
-          //获得标签结尾文本
-          if (text && text[0].trim() && text[0].slice(1, -1).trim()) {
-            text = text[0].slice(1, -1);
-            if (stack.len === 0) {
-              virtualDOMTree.push(text);
-            } else {
-              newVirtualDOM.children.push(text);
-            }
-          } else if (!text) {
-            //最后一个结尾标签的文本
-            text = html.substr(index + 1).trim();
-            text && virtualDOMTree.push(text);
-          }
-
-          virtualDOM = deepClone(virtualDOM);
-        }
-      }
+function buildVirtualDOM(virtualDOM, dom) {
+  if (stack.len === 0) {
+    virtualDOM = dom;
+  } else {
+    let vnode = virtualDOM;
+    for (let i = 1; i < stack.len; ++i) {
+      vnode = vnode.children[vnode.children.length - 1];
     }
-    return virtualDOMTree;
+    vnode.children.push(dom);
   }
-
-  function getStartTag() {
-    let type = '';
-    while (html[index] !== '>' && !isSpace(html[index])) {
-      if (html[index] === '/') {
-        index++;
-        continue;
+  return virtualDOM;
+}
+function parse(html) {
+  let tokens = tokenizer(html);
+  let virtualDOM = [];
+  /**利用栈先进后出的特性判断标签嵌套是否闭合 */
+  tokens.forEach(token => {
+    if (token.type === 'startTag') {
+      let tag = token.val.match(startTagReg)[0].trim();
+      let props = token.val.match(propsReg);
+      let o = {};
+      token.type = tag;
+      token.children = [];
+      if (props) {
+        props.forEach(prop => {
+          let key = prop.split('=')[0].trim();
+          let val = prop
+            .split('=')[1]
+            .trim()
+            .slice(1, -1);
+          o[key] = val;
+        });
       }
-      type += html[index];
-      index += 1;
+      token.props = o;
+      virtualDOM = buildVirtualDOM(virtualDOM, token);
+      if (!selfCloseTag.includes(tag)) {
+        stack.push(tag);
+      }
+      delete token.val;
     }
-    return type.trim();
+    if (token.type === 'endTag') {
+      let tag = token.val.match(endTagReg)[0];
+      token.type = tag;
+      if (tag === stack.last) {
+        stack.pop();
+      }
+      token.close = true;
+      delete token.val;
+    }
+    if (token.type === 'text') {
+      virtualDOM = buildVirtualDOM(virtualDOM, {text: token.val});
+    }
+    return token;
+  });
+  if (stack.len) {
+    throw new SyntaxError('匹配失败');
   }
-
-  function getProps(type) {
-    let props = {},
-      name = '',
-      val = '';
-    while (html[index] !== '>') {
-      while (html[index] === ' ') {
-        index++;
-      }
-      // 自闭合标签或者是普通标签无属性
-      if (html[index] === '/' || html[index] === '>') {
-        html[index] === '/' && index++;
-        return props;
-      }
-      while (html[index] !== '=') {
-        if (html[index - 1] === ' ') {
-          if (name) {
-            props[name] = name.trim();
-            name = '';
-          }
-        }
-        name += html[index];
-        index++;
-      }
-      if (html[index + 1] !== '"') {
-        throwError('Syntax', index + 1);
-      }
-      index += 2;
-      while (html[index] !== '"') {
-        val += html[index];
-        index++;
-        if (index === html.length) {
-          throwError('Syntax', index);
-        }
-      }
-      index++;
-      props[name] = val;
-      name = val = '';
-    }
-    return props;
-  }
-
-  function getEndTag() {
-    let type = '';
-    while (html[index] !== '>') {
-      if (isAlpha(html[index])) {
-        type += html[index];
-      }
-      index += 1;
-    }
-    // console.log(stack.last, type);
-    if (selfCloseTag.includes(stack.last)) {
-      return stack.pop();
-    }
-    // 遇到自闭合标签直接跳过
-    if (type !== stack.pop()) {
-      throwError('Syntax', index);
-    }
-  }
-
-  function getText() {
-    let text = '';
-    while (html[index + 1] !== '<') {
-      index += 1;
-      text += html[index];
-    }
-    return text.trim() ? text : '';
-  }
-
-  function throwError(type, len) {
-    let row = 0,
-      col = 0;
-    for (let index = 0; index < len; ++index) {
-      if (html[index] === '\n') {
-        col = 0;
-        row++;
-      } else {
-        col++;
-      }
-    }
-    switch (type) {
-      case 'Syntax':
-        throw new SyntaxError(`Syntax in position (${row},${col})`);
-        break;
-      case 'Ivalid':
-        throw new SyntaxError(`ivalid type in position (${row}, ${col})`);
-    }
-  }
-  return { parse };
+  return virtualDOM;
 }
 
-export default Lexical;
+export default parse;

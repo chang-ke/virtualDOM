@@ -31,19 +31,21 @@ export function isString(s) {
   return typeof s === 'string';
 }
 
-export function deepClone(o) {
-  let obj = {};
+export function deepClone(origin) {
+  let target = {};
   let toString = Object.prototype.toString;
-  Object.keys(o).forEach(key => {
-    if (toString[o[key]] === '[object Object]') {
-      obj[key] = deepClone(o[key]);
-    } else if (toString[o[key]] === '[object Array]') {
-      obj[key] = [...o[key]];
-    } else if (toString[o[key]] === '[object Date]') {
-      obj[key] = new Date(o[key].toUTCString());
+  Object.keys(origin).forEach(key => {
+    if (toString(origin[key]) === '[object Object]') {
+      target[key] = deepClone(origin[key]);
+    } else if (toString.call(origin[key]) === '[object Array]') {
+      target[key] = origin[key].map(val => {
+        return deepClone(val);
+      });
+    } else if (toString.call(origin[key]) === '[object Date]') {
+      target[key] = new Date(origin[key].toUTCString());
     } else {
-      obj[key] = o[key];
+      target[key] = origin[key];
     }
   });
-  return obj;
+  return target;
 }
