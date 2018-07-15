@@ -1,5 +1,5 @@
 import tokenizer from './tokenizer';
-import {Stack, deepClone} from '../utils/index';
+import {Stack, deepClone} from '../utils';
 
 let startTagReg = /[0-9a-z]+\s?/;
 let propsReg = /([0-9a-zA-Z]|-)+\s*=\s*(("(.|\s)*?")|('(.|\s)*?'))/g;
@@ -65,7 +65,8 @@ function parse(html) {
     return token;
   });
   if (stack.len) {
-    throw new SyntaxError('匹配失败');
+    stack.clear();
+    throw new SyntaxError('parse failed');
   }
   return virtualDOM;
 }

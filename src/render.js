@@ -1,4 +1,5 @@
-import {isString, deepClone} from '../utils/index.js';
+import {isString, deepClone} from '../utils';
+
 let data = {
   handleClick: function() {
     console.log(11);
@@ -123,4 +124,4 @@ function render() {
   };
 }
 
-export default {render: render()};
+export default render();

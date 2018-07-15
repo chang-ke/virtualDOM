@@ -1,9 +1,9 @@
-const doctype = /^<!DOCTYPE [^>]+>/i;
+const DOCTYPE = /^<!DOCTYPE [^>]+>/i;
 
 function tokenizer(html) {
   let token = '';
   let tokens = [];
-  html = html.replace(/<!--(.|\s)*?-->/gm, '').replace(doctype, '');
+  html = html.replace(/<!--(.|\s)*?-->/gm, '').replace(DOCTYPE, '');
 
   while (html.length) {
     /** 匹配开始标签*/
