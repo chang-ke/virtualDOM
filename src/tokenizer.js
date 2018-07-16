@@ -11,11 +11,11 @@ function tokenizer(html) {
       let index = 0;
       while (html[index] !== '>') {
         if (html[index] === '"' || html[index] === "'") {
-          let queot = html[index]; /**判断引号 */
+          let quote = html[index]; /**判断引号 */
           do {
             token += html[index];
             index++;
-          } while (html[index] !== queot);
+          } while (html[index] !== quote);
         }
         token += html[index];
         index++;

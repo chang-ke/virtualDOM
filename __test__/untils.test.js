@@ -1,6 +1,6 @@
 import {deepClone, isAlpha, isSpace, isString} from '../utils';
 
-test('deepClone {a: NaN, b: [null, 2], c: {s: "test", d: undefined}, e: new Date("2018-07-15")}', () => {
+test('deepClone test', () => {
   expect(deepClone({a: NaN, b: [null, 2], c: {s: 'test', d: undefined}, e: new Date('2018-07-15')})).toStrictEqual({
     a: NaN,
     b: [null, 2],
