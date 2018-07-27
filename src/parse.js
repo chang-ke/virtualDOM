@@ -1,9 +1,9 @@
 import tokenizer from './tokenizer';
 import {Stack, deepClone} from '../utils';
 
-let startTagReg = /[0-9a-z]+\s?/;
-let propsReg = /([0-9a-zA-Z]|-)+\s*=\s*(("(.|\s)*?")|('(.|\s)*?'))/g;
-let endTagReg = /[0-9a-zA-Z]+/;
+let startTagReg = /(?<=<)[0-9a-z]+/;
+let propsReg = /[\w-]+\s*=\s*("|')[^\1]*\1/g;
+let endTagReg = /[0-9a-z]+/;
 let stack = new Stack();
 let selfCloseTag = [
   ...'meta,base,br,hr,img,input,col,frame,link,command'.split(','),
@@ -22,47 +22,47 @@ function buildVirtualDOM(virtualDOM, dom) {
   }
   return virtualDOM;
 }
+
 function parse(html) {
   let tokens = tokenizer(html);
   let virtualDOM = [];
   /**利用栈先进后出的特性判断标签嵌套是否闭合 */
-  tokens.forEach(token => {
-    if (token.type === 'startTag') {
-      let tag = token.val.match(startTagReg)[0].trim();
-      let props = token.val.match(propsReg);
-      let o = {};
-      token.type = tag;
-      token.children = [];
-      if (props) {
-        props.forEach(prop => {
-          let key = prop.split('=')[0].trim();
-          let val = prop
-            .split('=')[1]
-            .trim()
-            .slice(1, -1);
-          o[key] = val;
-        });
-      }
-      token.props = o;
-      virtualDOM = buildVirtualDOM(virtualDOM, token);
+  tokens.forEach(vnode => {
+    if (vnode.type === 'startTag') {
+      let tag = vnode.val.match(startTagReg)[0];
+      let props = vnode.val.match(propsReg) || [];
+      vnode.type = tag;
+      vnode.children = [];
+      vnode.props = props.reduce((prev, curr) => {
+        let key = curr.match(/[\w-]+/)[0];
+        let val = curr.match(/(?<=("|'))[^\1]*(?=\1)/)[0];
+        if (key === 'key') {
+          vnode.key = val;
+          return prev;
+        }
+        prev[key] = val;
+        return prev;
+      }, Object.create(null));
+
+      virtualDOM = buildVirtualDOM(virtualDOM, vnode);
       if (!selfCloseTag.includes(tag)) {
         stack.push(tag);
       }
-      delete token.val;
+      delete vnode.val;
     }
-    if (token.type === 'endTag') {
-      let tag = token.val.match(endTagReg)[0];
-      token.type = tag;
+    if (vnode.type === 'endTag') {
+      let tag = vnode.val.match(endTagReg)[0];
+      vnode.type = tag;
       if (tag === stack.last) {
         stack.pop();
       }
-      token.close = true;
-      delete token.val;
+      vnode.close = true;
+      delete vnode.val;
     }
-    if (token.type === 'text') {
-      virtualDOM = buildVirtualDOM(virtualDOM, {text: token.val});
+    if (vnode.type === 'text') {
+      virtualDOM = buildVirtualDOM(virtualDOM, {text: vnode.val});
     }
-    return token;
+    return vnode;
   });
   if (stack.len) {
     stack.clear();

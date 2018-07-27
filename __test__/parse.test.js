@@ -1,7 +1,7 @@
-import {parse} from '../src/index';
+import {Parse} from '../src/index';
 
-test('parse test', () => {
-  expect(parse('<div id="test">test<div class = "wrapper" ><img data-src="./1.jpg"/></div>  </div>')).toStrictEqual({
+test('Parse test', () => {
+  expect(Parse('<div id="test">test<div class = "wrapper" ><img data-src="./1.jpg"/></div>  </div>')).toStrictEqual({
     type: 'div',
     props: {id: 'test'},
     children: [
@@ -11,6 +11,6 @@ test('parse test', () => {
   });
 });
 
-test('parse failed', () => {
-  expect(() => parse('<div id="test">test<span><i></i></span><img data-src="./1.jpg"/>')).toThrowError('parse failed');
+test('Parse failed', () => {
+  expect(() => Parse('<div id="test">test<span><i></i></span><img data-src="./1.jpg"/>')).toThrowError('Parse failed');
 });

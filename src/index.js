@@ -1,9 +1,7 @@
-import diff from './diff';
+export {default as diff} from './diff';
 
-import parse from './parse';
+export {default as Parse} from './parse';
 
-import render from './render';
+export {default as Render} from './render';
 
-import tokenizer from './tokenizer';
-
-export {diff, parse, render, tokenizer};
+export {default as tokenizer} from './tokenizer';

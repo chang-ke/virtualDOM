@@ -6,11 +6,12 @@ let data = {
   },
 };
 class Element {
-  constructor({type, props, children}) {
+  constructor({type, props, children = null, text}) {
     this.type = type;
     this.props = props;
     this.children = children;
     this.key = null;
+    if (text) this.key = text;
     if ('key' in props) {
       this.key = props.key;
     }
