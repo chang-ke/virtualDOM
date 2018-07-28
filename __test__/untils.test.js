@@ -1,4 +1,4 @@
-import {deepClone, isAlpha, isSpace, isString} from '../utils';
+import {deepClone, isAlpha, isSpace, isString, deepEqual} from '../utils';
 
 test('deepClone test', () => {
   expect(deepClone({a: NaN, b: [null, 2], c: {s: 'test', d: undefined}, e: new Date('2018-07-15')})).toStrictEqual({
@@ -27,4 +27,27 @@ test('isString test', () => {
   expect(isString('\n')).toBe(true);
   expect(isString({})).toBe(false);
   expect(isString(1)).toBe(false);
+});
+
+test('deepEqual test', () => {
+  let a = {
+    a: undefined,
+    b: NaN,
+    c: [1, 2, {a: 1}],
+    d: '',
+    e: 's45d',
+    f: null,
+    g: {},
+  };
+  let b = {
+    a: undefined,
+    b: NaN,
+    c: [1, 2, {a: 1}],
+    d: '',
+    e: 's45d',
+    f: null,
+    g: {},
+  };
+
+  expect(deepEqual(a, b)).toBe(true);
 });

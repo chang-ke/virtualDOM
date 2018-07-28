@@ -3,7 +3,7 @@ const DOCTYPE = /^<!DOCTYPE [^>]+>/i;
 function tokenizer(html) {
   let token = '';
   let tokens = [];
-  html = html.replace(/<!--(.|\s)*?-->/gm, '').replace(DOCTYPE, '');
+  html = html.replace(/<!--[\w\W]*?-->/gm, '').replace(DOCTYPE, '');
 
   while (html.length) {
     /** 匹配开始标签*/
@@ -35,7 +35,7 @@ function tokenizer(html) {
       if (token.trim()) {
         tokens.push({
           type: 'text',
-          val: token,
+          val: token.trim(),
         });
       }
     } else if (html[0] === '<' && html[1] === '/') {

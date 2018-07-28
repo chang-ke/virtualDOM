@@ -63,3 +63,22 @@ export function deepClone(origin) {
   });
   return target;
 }
+
+export function deepEqual(origin, target) {
+  if (typeof origin !== typeof target) {
+    return false;
+  } else {
+    if (typeof origin === 'number') {
+      // 两者不相等，但不同时为NaN
+      if (origin !== target && !(origin !== origin && target !== target)) return false;
+    } else if (typeof origin === 'object' && origin !== null) {
+      if (Object.keys(origin).length !== Object.keys(target).length) return false;
+      for (let key in origin) {
+        if (!deepEqual(origin[key], target[key])) return false;
+      }
+    } else if (typeof origin === 'string') {
+      return origin === target;
+    }
+  }
+  return true;
+}
