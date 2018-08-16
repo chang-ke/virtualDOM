@@ -50,4 +50,8 @@ test('deepEqual test', () => {
   };
 
   expect(deepEqual(a, b)).toBe(true);
+  expect(deepEqual('a', 1)).toBe(false);
+  expect(deepEqual(0, 1)).toBe(false);
+  expect(deepEqual({a: ''}, {})).toBe(false);
+  expect(deepEqual({a: {b: 1}}, {a: {b: 2}})).toBe(false);
 });

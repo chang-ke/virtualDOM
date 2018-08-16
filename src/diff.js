@@ -5,26 +5,29 @@ const ACTION = {
   replace: 'replace',
   remove: 'remove',
   insert: 'insert',
+  append: 'append',
   move: 'move',
 };
 
 export default function diff(oldDOM, newDOM) {
   let patchs = {};
-  dfs(oldDOM, newDOM, 0, patchs);
+  let walker = {index: 0};
+  dfs(oldDOM, newDOM, patchs, walker);
   return patchs;
 }
 
-function dfs(oldVnode, newVnode, index, patchs) {
+function dfs(oldVnode, newVnode, patchs, walker) {
+  let index = walker.index++;
   let curPatches = [];
   if (newVnode) {
-    // 节点类型相同，但是key不同，更新即可
-    if (newVnode.type === oldVnode.type && newVnode.key === oldVnode.key) {
+    if (newVnode.text !== oldVnode.text) {
+      // 替换
+      curPatches.push({type: ACTION.replace, vnode: newVnode});
+    } else if (oldVnode.tagName === newVnode.tagName && oldVnode.key === newVnode.key) {
+      // 节点类型相同，但是key不同，更新即可
       let props = diffProps(oldVnode.props, newVnode.props);
       if (props.length) curPatches.push({type: ACTION.update, props});
-      diffChildren(oldVnode.children, newVnode.children, index, patchs);
-    } else if (newVnode.text !== oldVnode.text) {
-      // 否则需要替换
-      curPatches.push({type: ACTION.replace, vnode: newVnode});
+      diffChildren(oldVnode.children, newVnode.children, patchs, walker);
     }
   }
   if (curPatches.length) {
@@ -36,7 +39,7 @@ function dfs(oldVnode, newVnode, index, patchs) {
 function diffProps(oldProps, newProps) {
   let changes = [];
   for (const key in oldProps) {
-    // 利用vlaue === undefined 作为移除属性的判断依据
+    // 利用vlaue不存在作为移除属性的判断依据
     if (!(key in newProps)) {
       changes.push({key});
     }
@@ -72,78 +75,54 @@ function listHaskey(list) {
   }
 }
 
-function listDiff(oldList = [], newList = [], index, patchs) {
-  if (listHaskey(newList)) {
-    let oldKeys = getKeys(oldList);
-    let newKeys = getKeys(newList);
-    let changes = [];
-    let list = [];
-    oldList.forEach(node => {
-      let key = node.key || node.text;
-      if (newKeys.indexOf(key) !== -1) {
-        list.push(key);
-      } else {
-        list.push(null);
-      }
-    });
-    let len = list.length - 1;
-    for (let i = len; i >= 0; --i) {
-      if (!list[i]) {
-        list.splice(i, 1);
-        changes.push({
-          type: ACTION.remove,
-          index: 1,
-        });
-      }
-    }
-    newList.forEach((node, i) => {
-      let key = node.key || node.text;
-      let index = list.indexOf(key);
-      if (index === -1 || !key) {
-        changes.push({
-          type: ACTION.insert,
-          vnode: node,
-          index: i,
-        });
-        list.splice(i, 0, key);
-      } else {
-        if (index !== i) {
-          changes.push({
-            type: ACTION.move,
-            from: index,
-            to: i,
-          });
-          move(list, index, i);
-        }
-      }
-    });
-    return {changes, list};
-  } else {
-    oldList.forEach((node, i) => {});
+function listDiff(oldList = [], newList = [], patchs, walker) {
+  let index = walker.index - 1;
+  let oldKeys = getKeys(oldList);
+  let newKeys = getKeys(newList);
+  let changes = [];
+  let list = [];
+  if (!patchs[index]) {
+    patchs[index] = [];
   }
+  oldKeys.forEach((key, oldIndex) => {
+    let newIndex = newKeys.indexOf(key);
+    if (newIndex === -1) {
+      //patchs[index].push({type: 'remove', index: oldIndex});
+      console.log('remove: ', key);
+    } else if (newIndex !== oldIndex) {
+      patchs[index].push({type: 'move', from: oldIndex, to: newIndex});
+      console.log('move: ', key, oldIndex, newIndex);
+    }
+  });
+  newKeys.forEach((key, oldIndex) => {
+    if (oldKeys.indexOf(key) === -1) {
+      //patchs[index].push({type: 'append', vnode: newList[oldIndex]});
+      console.log('insert: ', key);
+    }
+  });
+  if (!patchs[index].length) delete patchs[index];
 }
 
-function diffChildren(oldChildren = [], newChildren = [], index, patchs) {
-  let {changes, list} = listDiff(oldChildren, newChildren, index, patchs);
-  if (changes.length) {
-    if (patchs[index]) {
-      patchs[index] = patchs[index].push(...changes);
-    } else {
-      patchs[index] = changes;
-    }
-  }
-  let last = null;
-  oldChildren.forEach((node, i) => {
-    let child = node.children;
-    if (child) {
-      index = last && last.children ? index + last.children.length + 1 : index + 1;
-      let newNode = newChildren[list.indexOf(node.key)];
-      if (newNode) {
-        dfs(node, newNode, index, patchs);
+function diffChildren(oldChildren, newChildren, patchs, walker) {
+  let index = walker.index - 1;
+  if (newChildren) {
+    oldChildren.slice(newChildren.length).forEach((child, i) => {
+      if (!patchs[index]) {
+        patchs[index] = [];
       }
-    } else {
-      index += 1;
-    }
-    last = node;
-  });
+      patchs[index].push({type: ACTION.remove, index: i});
+    });
+    newChildren.slice(oldChildren.length).forEach(child => {
+      if (!patchs[index]) {
+        patchs[index] = [];
+      }
+      patchs[index].push({type: ACTION.append, vnode: child});
+    });
+    listDiff(oldChildren, newChildren, patchs, walker);
+    newChildren.forEach((child, i) => {
+      if (oldChildren[i] && i >= oldChildren.length - newChildren.length) {
+        dfs(oldChildren[i], child, patchs, walker);
+      }
+    });
+  }
 }

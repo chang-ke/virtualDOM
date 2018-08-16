@@ -80,5 +80,6 @@ export function deepEqual(origin, target) {
       return origin === target;
     }
   }
+
   return true;
 }

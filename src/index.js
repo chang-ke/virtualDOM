@@ -1,6 +1,8 @@
 export {default as diff} from './diff';
 
-export {default as Parse} from './parse';
+export {default as ConvertHtmlToVdom} from './ConvertHtmlToVdom';
+
+export {default as ConvertVdomToHtml} from './ConvertVdomToHtml';
 
 export {default as Render} from './render';
 
